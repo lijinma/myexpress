@@ -1,9 +1,3 @@
-var express = require("../");
-
-var request = require("supertest")
-  , expect = require("chai").expect
-  , http = require('http');
-
 describe("app",function() {
   var app = express()
   describe("create http server",function() {
