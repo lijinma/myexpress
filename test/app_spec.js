@@ -130,11 +130,9 @@ describe("app",function() {
     var app;
     beforeEach(function() {
       app = new express();
+      subApp = new express();
     });
     it('should pass unhandled request to parent', function(done) {
-      app = new express();
-      subApp = new express();
-
       function m2(req,res,next) {
         res.end("m2");
       }
@@ -144,9 +142,6 @@ describe("app",function() {
       request(app).get('/').expect("m2").end(done);
     });
     it('should pass unhandled error to parent', function(done) {
-      app = new express();
-      subApp = new express();
-
       function m1(req,res,next) {
         next("m1 error");
       }
@@ -161,6 +156,33 @@ describe("app",function() {
       app.use(e1);
       request(app).get('/').expect("m1 error").end(done);
     });
+  });
+
+/* Missing lesson 4 */
+
+  describe('path parameters extraction', function() {
+    var app;
+    beforeEach(function() {
+      var Layer = require('../lib/layer');
+      middleware = function() {};
+      layer = new Layer("/foo/:a/:b", middleware)
+    });
+    it('returns undefined for unmatched path', function() {
+      var result = layer.match("/foo");
+      expect(result).to.be.undefined;
+    });
+    it("returns undefined if there isn't enough parameters", function() {
+      var result = layer.match("/foo/apple");
+      expect(result).to.be.undefined;
+    });
+    it('returns match data for exact match', function() {
+      var result = layer.match("/foo/apple/xiaomi");
+      expect(result).not.to.be.undefined;
+      expect(result).to.have.property("path", "/foo/apple/xiaomi");
+      // ? expect(result).to.have.property("params", {a: "apple", b: "xiaomi"});
+      expect(result.params).to.deep.equal({a: "apple", b: "xiaomi"});
+    });
+
   });
 
 });
