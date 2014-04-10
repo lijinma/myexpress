@@ -70,31 +70,31 @@ describe("app",function() {
     })
   });
 
-  describe('Implement Error Handling', function() {
-    var app;
-    beforeEach(function() {
-      app = new express();
-    });
-    it('should return 500 for unhandled error', function(done) {
-      var m1 = function(req,res,next) {
-        next(new Error("boom!"));
-      }
-      app.use(m1)
-      request(app).get('/').expect(500).end(done);
-    });
-    it('should return 500 for uncaught error', function(done) {
-      var m1 = function(req,res,next) {
-        throw new Error("boom!");
-      };
-      app.use(m1)
-      request(app).get('/').expect(500).end(done);
-    });
-    it('should skip error handlers when next is called without an error', function(done) {
-      var m1 = function(req,res,next) {
-        next();
-      }
+describe('Implement Error Handling', function() {
+  var app;
+  beforeEach(function() {
+    app = new express();
+  });
+  it('should return 500 for unhandled error', function(done) {
+    var m1 = function(req,res,next) {
+      next(new Error("boom!"));
+    }
+    app.use(m1)
+    request(app).get('/').expect(500).end(done);
+  });
+  it('should return 500 for uncaught error', function(done) {
+    var m1 = function(req,res,next) {
+      throw new Error("boom!");
+    };
+    app.use(m1)
+    request(app).get('/').expect(500).end(done);
+  });
+  it('should skip error handlers when next is called without an error', function(done) {
+    var m1 = function(req,res,next) {
+      next();
+    }
 
-      var e1 = function(err,req,res,next) {
+    var e1 = function(err,req,res,next) {
         // timeout
       }
 
@@ -106,12 +106,12 @@ describe("app",function() {
       app.use(m2);
       request(app).get('/').expect("m2").end(done);
     });
-    it('should skip normal middlewares if next is called with an error', function(done) {
-      var m1 = function(req,res,next) {
-        next(new Error("boom!"));
-      }
+  it('should skip normal middlewares if next is called with an error', function(done) {
+    var m1 = function(req,res,next) {
+      next(new Error("boom!"));
+    }
 
-      var m2 = function(req,res,next) {
+    var m2 = function(req,res,next) {
         // timeout
       }
 
@@ -124,65 +124,85 @@ describe("app",function() {
       app.use(e1);
       request(app).get('/').expect("e1").end(done);
     });
+});
+
+describe('Implement App Embedding As Middleware', function() {
+  var app;
+  beforeEach(function() {
+    app = new express();
+    subApp = new express();
   });
+  it('should pass unhandled request to parent', function(done) {
+    function m2(req,res,next) {
+      res.end("m2");
+    }
 
-  describe('Implement App Embedding As Middleware', function() {
-    var app;
-    beforeEach(function() {
-      app = new express();
-      subApp = new express();
-    });
-    it('should pass unhandled request to parent', function(done) {
-      function m2(req,res,next) {
-        res.end("m2");
-      }
-
-      app.use(subApp);
-      app.use(m2);
-      request(app).get('/').expect("m2").end(done);
-    });
-    it('should pass unhandled error to parent', function(done) {
-      function m1(req,res,next) {
-        next("m1 error");
-      }
-
-      function e1(err,req,res,next) {
-        res.end(err);
-      }
-
-      subApp.use(m1);
-
-      app.use(subApp);
-      app.use(e1);
-      request(app).get('/').expect("m1 error").end(done);
-    });
+    app.use(subApp);
+    app.use(m2);
+    request(app).get('/').expect("m2").end(done);
   });
+  it('should pass unhandled error to parent', function(done) {
+    function m1(req,res,next) {
+      next("m1 error");
+    }
+
+    function e1(err,req,res,next) {
+      res.end(err);
+    }
+
+    subApp.use(m1);
+
+    app.use(subApp);
+    app.use(e1);
+    request(app).get('/').expect("m1 error").end(done);
+  });
+});
 
 /* Missing lesson 4 */
 
-  describe('path parameters extraction', function() {
-    var app;
-    beforeEach(function() {
-      var Layer = require('../lib/layer');
-      middleware = function() {};
-      layer = new Layer("/foo/:a/:b", middleware)
-    });
-    it('returns undefined for unmatched path', function() {
-      var result = layer.match("/foo");
-      expect(result).to.be.undefined;
-    });
-    it("returns undefined if there isn't enough parameters", function() {
-      var result = layer.match("/foo/apple");
-      expect(result).to.be.undefined;
-    });
-    it('returns match data for exact match', function() {
-      var result = layer.match("/foo/apple/xiaomi");
-      expect(result).not.to.be.undefined;
-      expect(result).to.have.property("path", "/foo/apple/xiaomi");
+describe('path parameters extraction', function() {
+  beforeEach(function() {
+    var Layer = require('../lib/layer');
+    middleware = function() {};
+    layer = new Layer("/foo/:a/:b", middleware)
+  });
+  it('returns undefined for unmatched path', function() {
+    var result = layer.match("/foo");
+    expect(result).to.be.undefined;
+  });
+  it("returns undefined if there isn't enough parameters", function() {
+    var result = layer.match("/foo/apple");
+    expect(result).to.be.undefined;
+  });
+  it('returns match data for exact match', function() {
+    var result = layer.match("/foo/apple/xiaomi");
+    expect(result).not.to.be.undefined;
+    expect(result).to.have.property("path", "/foo/apple/xiaomi");
       // ? expect(result).to.have.property("params", {a: "apple", b: "xiaomi"});
       expect(result.params).to.deep.equal({a: "apple", b: "xiaomi"});
     });
 
+});
+
+describe('Implement req.params', function() {
+  var app;
+  beforeEach(function() {
+    app = express();
+    app.use("/foo/:a",function(req,res,next) {
+      res.end(req.params.a);
+    });
+    app.use("/foo",function(req,res,next) {
+      res.end(""+req.params.a);
+    });
   });
+
+  it('should make path parameters accessible in req.params', function(done) {
+    request(app).get('/foo/google').expect('google').end(done);
+  });
+
+  it('should make {} the default for req.params', function(done) {
+    request(app).get('/foo').expect("undefined").end(done);
+  });
+});
 
 });
