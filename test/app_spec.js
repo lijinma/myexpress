@@ -178,9 +178,9 @@ describe('path parameters extraction', function() {
     var result = layer.match("/foo/apple/xiaomi");
     expect(result).not.to.be.undefined;
     expect(result).to.have.property("path", "/foo/apple/xiaomi");
-      // ? expect(result).to.have.property("params", {a: "apple", b: "xiaomi"});
-      expect(result.params).to.deep.equal({a: "apple", b: "xiaomi"});
-    });
+    /* ? expect(result).to.have.property("params", {a: "apple", b: "xiaomi"}); */
+    expect(result.params).to.deep.equal({a: "apple", b: "xiaomi"});
+  });
 
 });
 
@@ -202,6 +202,55 @@ describe('Implement req.params', function() {
 
   it('should make {} the default for req.params', function(done) {
     request(app).get('/foo').expect("undefined").end(done);
+  });
+});
+
+describe('app should have the handle method', function() {
+  var app;
+  before(function(){
+    app = express();
+  })
+  it('should have the handle method', function() {
+    expect(app.handle).to.be.a("function");
+  });
+});
+
+describe('Prefix path trimming', function() {
+  var app;
+  var subApp;
+  before(function(){
+    app = express();
+    subApp = express();
+    subApp.use("/bar",function(req, res) {
+      res.end("embedded app: "+req.url);
+    });
+    app.use("/foo",subApp);
+    app.use("/foo",function(req, res) {
+      res.end("handler: "+req.url);
+    });
+  });
+
+  it('trims request path prefix when calling embedded app', function(done) {
+    request(app).get('/foo/bar').expect('embedded app: /bar').end(done);
+  });
+  it('restore trimmed request path to original when going to the next middleware', function(done) {
+    request(app).get('/foo').expect('handler: /foo').end(done);
+  });
+});
+
+describe('ensures leading slash', function() {
+  var app;
+  var subApp;
+  before(function(){
+    app = express();
+    subApp = express();
+    subApp.use("/",function(req, res) {
+      res.end("/bar");
+    });
+    app.use("/bar",subApp);
+  })
+  it('ensures that first char is / for trimmed path', function(done) {
+    request(app).get('/bar/').expect('/bar').end(done);
   });
 });
 
